@@ -1,0 +1,256 @@
+/* ---------------------------------------------------------------------------
+   Design tokens + reset
+   --------------------------------------------------------------------------- */
+
+:root {
+  color-scheme: dark;
+
+  /* surfaces */
+  --bg-app: #0b0e15;
+  --bg-panel: #121722;
+  --bg-panel-alt: #151b28;
+  --bg-elevated: #1a2130;
+  --bg-input: #0d121c;
+  --bg-hover: rgba(255, 255, 255, 0.045);
+  --bg-active: rgba(152, 217, 142, 0.14);
+  --bg-scrim: rgba(6, 8, 13, 0.66);
+
+  /* lines */
+  --border: #222a3b;
+  --border-soft: #1b2231;
+  --border-strong: #303a52;
+
+  /* text */
+  --text: #e7ebf3;
+  --text-muted: #98a2b8;
+  --text-dim: #6b7688;
+  --text-inverse: #0b0e15;
+
+  /* brand */
+  --accent: #98d98e;
+  --accent-hover: #b2e5a9;
+  --accent-soft: rgba(152, 217, 142, 0.16);
+  --accent-line: rgba(152, 217, 142, 0.42);
+  --accent-alt: #5fc9a8;
+
+  /* semantic */
+  --success: #3ecf8e;
+  --success-soft: rgba(62, 207, 142, 0.14);
+  --warning: #efb45c;
+  --warning-soft: rgba(239, 180, 92, 0.14);
+  --danger: #f2606a;
+  --danger-soft: rgba(242, 96, 106, 0.15);
+  --info: #5cc2ea;
+  --info-soft: rgba(92, 194, 234, 0.14);
+
+  /* geometry */
+  --radius-xs: 5px;
+  --radius-sm: 7px;
+  --radius: 10px;
+  --radius-lg: 14px;
+  --radius-pill: 999px;
+
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --shadow-2: 0 10px 28px rgba(0, 0, 0, 0.42);
+  --shadow-3: 0 28px 68px rgba(0, 0, 0, 0.58);
+
+  --font-sans:
+    'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI Variable', 'Segoe UI', Roboto,
+    'Helvetica Neue', 'Microsoft YaHei', sans-serif;
+  --font-mono:
+    ui-monospace, 'Cascadia Code', 'JetBrains Mono', 'SFMono-Regular', Consolas, 'Liberation Mono',
+    monospace;
+
+  --sidebar-width: 272px;
+  --topbar-height: 58px;
+  --statusbar-height: 30px;
+
+  --ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--bg-app);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: 13.5px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overflow: hidden;
+  /* A desktop app should not select chrome like a web page. */
+  user-select: none;
+}
+
+h1,
+h2,
+h3,
+h4,
+p,
+figure {
+  margin: 0;
+  font-weight: 600;
+}
+
+h1 {
+  font-size: 19px;
+  letter-spacing: -0.01em;
+}
+
+h2 {
+  font-size: 15px;
+}
+
+h3 {
+  font-size: 13.5px;
+}
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+a:hover {
+  color: var(--accent-hover);
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+code,
+pre,
+.mono {
+  font-family: var(--font-mono);
+  font-variant-ligatures: none;
+}
+
+/* Anything the user may want to copy opts back in. */
+input,
+textarea,
+pre,
+code,
+.selectable,
+[data-selectable] {
+  user-select: text;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent-line);
+  outline-offset: 1px;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #2a3346;
+  border: 2px solid transparent;
+  background-clip: content-box;
+  border-radius: var(--radius-pill);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #3a465f;
+  background-clip: content-box;
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+::selection {
+  background: var(--accent-soft);
+}
+
+/* ---------------------------------------------------------------------------
+   Shared utilities
+   --------------------------------------------------------------------------- */
+
+.row {
+  display: flex;
+  align-items: center;
+}
+
+.row-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.gap-4 { gap: 4px; }
+.gap-6 { gap: 6px; }
+.gap-8 { gap: 8px; }
+.gap-12 { gap: 12px; }
+.gap-16 { gap: 16px; }
+
+.grow { flex: 1 1 auto; min-width: 0; }
+.wrap { flex-wrap: wrap; }
+
+.muted { color: var(--text-muted); }
+.dim { color: var(--text-dim); }
+.text-success { color: var(--success); }
+.text-danger { color: var(--danger); }
+.text-warning { color: var(--warning); }
+.small { font-size: 12px; }
+.tiny { font-size: 11px; }
+.bold { font-weight: 600; }
+.nowrap { white-space: nowrap; }
+.ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.stack {
+  display: flex;
+  flex-direction: column;
+}
+.stack-4 { display: flex; flex-direction: column; gap: 4px; }
+.stack-8 { display: flex; flex-direction: column; gap: 8px; }
+.stack-12 { display: flex; flex-direction: column; gap: 12px; }
+.stack-16 { display: flex; flex-direction: column; gap: 16px; }
+
+.grid-cards {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+}
+
+.mt-8 { margin-top: 8px; }
+.mt-16 { margin-top: 16px; }
+.mb-8 { margin-bottom: 8px; }

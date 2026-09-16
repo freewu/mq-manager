@@ -1,0 +1,210 @@
+# Builds the installers for Windows, macOS and Linux and publishes them as a
+# GitHub Release.
+#
+# How it is triggered: a push to `main` that changes the version in
+# `src-tauri/tauri.conf.json`. Any other push is ignored, and a version whose
+# tag already exists is skipped, so re-running is harmless. `workflow_dispatch`
+# releases whatever version the branch currently carries.
+#
+# Every platform also uploads the plain executable (`uploadPlainBinary`), so the
+# app can be run without installing anything. The release message is generated
+# by `scripts/release-plan.mjs` from CHANGELOG.md plus the commits in the push.
+#
+# The whole procedure (and what to do when it fails) is written down in
+# AGENTS.md.
+name: Release
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - src-tauri/tauri.conf.json
+  workflow_dispatch:
+
+# Needed to create the tag, the release and its assets.
+permissions:
+  contents: write
+
+# Two runs would fight over the same tag, so never run two at once.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  plan:
+    name: Plan
+    runs-on: ubuntu-latest
+    outputs:
+      release: ${{ steps.plan.outputs.release }}
+      version: ${{ steps.plan.outputs.version }}
+      tag: ${{ steps.plan.outputs.tag }}
+      notes: ${{ steps.plan.outputs.notes }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The plan compares the version with the commit it was pushed from.
+          fetch-depth: 0
+          fetch-tags: true
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Decide whether to release
+        id: plan
+        env:
+          # Empty for a manual run, all zeroes for a branch's first push.
+          BEFORE_SHA: ${{ github.event.before }}
+        run: node scripts/release-plan.mjs --github-output >> "$GITHUB_OUTPUT"
+
+      - name: Summarise
+        run: |
+          {
+            echo "## Release plan"
+            echo
+            echo "| version | tag | release |"
+            echo "| --- | --- | --- |"
+            echo "| \`${{ steps.plan.outputs.version }}\` | \`${{ steps.plan.outputs.tag }}\` | ${{ steps.plan.outputs.release }} |"
+            echo
+            echo "${{ steps.plan.outputs.reason }}"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  verify:
+    name: Verify
+    needs: plan
+    if: needs.plan.outputs.release == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Linux dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            patchelf \
+            cmake \
+            build-essential
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Install frontend dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Never publish code that does not pass the same checks as a local run.
+      - name: Type check
+        run: pnpm typecheck
+
+      - name: Frontend tests
+        run: pnpm test
+
+      - name: Backend tests
+        run: cargo test --manifest-path src-tauri/Cargo.toml
+
+  build:
+    name: Build ${{ matrix.label }}
+    needs: [plan, verify]
+    if: needs.plan.outputs.release == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: Windows x64
+            platform: windows-latest
+            args: --bundles nsis
+          - label: macOS universal
+            platform: macos-latest
+            args: --target universal-apple-darwin --bundles dmg
+          - label: Linux x64
+            platform: ubuntu-22.04
+            args: --bundles deb,appimage
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v4
+
+      # WebKitGTK and friends; nothing else on the runner needs installing,
+      # and `librdkafka` is compiled from source by the `rdkafka` crate.
+      - name: Install Linux dependencies
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            patchelf \
+            cmake \
+            build-essential
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install Rust (Intel + Apple Silicon for the universal build)
+        if: matrix.platform == 'macos-latest'
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+
+      - name: Install Rust
+        if: matrix.platform != 'macos-latest'
+        uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+          key: ${{ matrix.platform }}
+
+      - name: Install frontend dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build and publish
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ needs.plan.outputs.tag }}
+          releaseName: MQ Manager ${{ needs.plan.outputs.tag }}
+          releaseBody: ${{ needs.plan.outputs.notes }}
+          # Published by the job below, once every platform has uploaded.
+          releaseDraft: true
+          prerelease: false
+          # Standalone executables next to the installers.
+          uploadPlainBinary: true
+          # No updater is configured, so there is no latest.json to publish.
+          uploadUpdaterJson: false
+          retryAttempts: 2
+          args: ${{ matrix.args }}
+
+  publish:
+    name: Publish
+    needs: [plan, build]
+    if: needs.plan.outputs.release == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Make the release public
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release edit "${{ needs.plan.outputs.tag }}" \
+            --draft=false \
+            --repo "$GITHUB_REPOSITORY"

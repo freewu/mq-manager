@@ -1,0 +1,92 @@
+[package]
+name = "mq-manager"
+version = "0.1.0"
+description = "Universal message queue management client (Kafka, RocketMQ, RabbitMQ, MQTT, ...)"
+authors = ["mq-manager contributors"]
+edition = "2021"
+rust-version = "1.88"
+license = "MIT"
+
+[lib]
+name = "mq_manager_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+# --- shell ---------------------------------------------------------------
+tauri = { version = "2", features = [] }
+tauri-plugin-opener = "2"
+tauri-plugin-dialog = "2"
+
+# --- shared --------------------------------------------------------------
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+async-trait = "0.1"
+parking_lot = "0.12"
+uuid = { version = "1", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+base64 = "0.22"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tokio = { version = "1", features = [
+  "rt-multi-thread",
+  "macros",
+  "sync",
+  "time",
+  "net",
+  "io-util",
+] }
+
+# --- drivers -------------------------------------------------------------
+# `cmake-build` compiles librdkafka from source so no system package is required.
+# Enable the `tls` feature of this crate for SSL/SASL_SSL clusters.
+rdkafka = { version = "0.38", default-features = false, features = [
+  "cmake-build",
+  "tokio",
+  "libz",
+] }
+
+# RabbitMQ: AMQP 0-9-1 client used for publishing / consuming.
+# TLS comes from `rustls` with the `ring` crypto provider, which is built with
+# `cc` alone — no CMake, NASM or OpenSSL is required.
+lapin = { version = "4", default-features = false, features = [
+  "tokio",
+  "rustls--ring",
+  "rustls-native-certs",
+] }
+
+# RabbitMQ management API (HTTP) plus a general purpose HTTP client for drivers.
+reqwest = { version = "0.13", default-features = false, features = [
+  "json",
+  "charset",
+  "rustls-no-provider",
+] }
+
+# Installs the process wide rustls crypto provider at start-up. `reqwest` is
+# built without one so that both clients agree on `ring`.
+rustls = { version = "0.23", default-features = false, features = [
+  "std",
+  "tls12",
+  "logging",
+  "ring",
+] }
+
+# RocketMQ message bodies may be zlib compressed; the pure rust backend keeps
+# the build free of C dependencies.
+flate2 = "1"
+
+[features]
+default = []
+# Adds a vendored OpenSSL build so SSL / SASL_SSL / SCRAM can be used.
+# Requires perl + nasm on Windows and a C toolchain on every platform.
+tls = ["rdkafka/ssl-vendored"]
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = "s"
+panic = "abort"
+strip = true

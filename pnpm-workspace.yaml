@@ -1,0 +1,13 @@
+# pnpm v11 reads project settings from here (no longer `package.json`).
+# `esbuild` ships a post-install script that links its native binary; allow it.
+allowBuilds:
+  esbuild: true
+
+# Kept for pnpm 10 compatibility.
+onlyBuiltDependencies:
+  - esbuild
+
+# The desktop app is a single package, but keeping this file means `pnpm`
+# treats the directory as a project root instead of walking upwards.
+packages:
+  - '.'
