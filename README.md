@@ -38,6 +38,9 @@ AMQP 协议本身无法「列出所有队列」，所以 RabbitMQ 驱动的发�
 
 TLS 使用 `rustls` + `ring`（不使用 `aws-lc-rs`，因此不需要 CMake / NASM）。
 
+Linux 上编译 Rust 侧还需要 `libcurl4-openssl-dev`（Kafka 驱动依赖的 librdkafka 会无条件
+`#include <curl/curl.h>`，虽然并不会引用任何 curl 符号）。Windows 与 macOS 自带该头文件。
+
 ## 开发
 
 ```bash

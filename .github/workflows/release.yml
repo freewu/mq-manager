@@ -100,6 +100,17 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
 
+      # `librdkafka`'s rdkafka_conf.c includes <curl/curl.h> behind
+      # `#ifdef WITH_OAUTHBEARER_OIDC`, and cmake writes that macro with
+      # `#cmakedefine01` — so it is *defined* (as 0) even though the OIDC support it
+      # guards is off. Nothing in the file calls libcurl, only the header has to
+      # exist, and rdkafka-sys forwards CFLAGS to the cmake build.
+      - name: Provide a curl header for librdkafka
+        run: |
+          mkdir -p "$RUNNER_TEMP/curl-include/curl"
+          echo '/* placeholder, see .github/workflows/release.yml */' > "$RUNNER_TEMP/curl-include/curl/curl.h"
+          echo "CFLAGS=-I$RUNNER_TEMP/curl-include" >> "$GITHUB_ENV"
+
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: src-tauri
@@ -168,6 +179,25 @@ jobs:
       - name: Install Rust
         if: matrix.platform != 'macos-latest'
         uses: dtolnay/rust-toolchain@stable
+
+      # See the note in the verify job: librdkafka wants a curl/curl.h that it never
+      # uses. Both variants only add an include directory, they do not install curl.
+      - name: Provide a curl header for librdkafka
+        if: matrix.platform != 'windows-latest'
+        run: |
+          mkdir -p "$RUNNER_TEMP/curl-include/curl"
+          echo '/* placeholder, see .github/workflows/release.yml */' > "$RUNNER_TEMP/curl-include/curl/curl.h"
+          echo "CFLAGS=-I$RUNNER_TEMP/curl-include" >> "$GITHUB_ENV"
+
+      - name: Provide a curl header for librdkafka (MSVC)
+        if: matrix.platform == 'windows-latest'
+        shell: pwsh
+        run: |
+          $dir = Join-Path $env:RUNNER_TEMP 'curl-include'
+          New-Item -ItemType Directory -Force -Path (Join-Path $dir 'curl') | Out-Null
+          Set-Content -Path (Join-Path $dir 'curl\curl.h') -Value '/* placeholder, see .github/workflows/release.yml */'
+          # MSVC accepts `-I`; cmake forwards CFLAGS as CMAKE_C_FLAGS.
+          "CFLAGS=-I$($dir -replace '\\', '/')" | Out-File -Append -Encoding utf8 $env:GITHUB_ENV
 
       - uses: Swatinem/rust-cache@v2
         with:

@@ -66,6 +66,14 @@ just release 0.2.0              # 或 git add -A && git commit -m "chore(release
   **Read and write permissions**，否则创建 Release 会 403。
 - Release 说明 = `CHANGELOG.md` 中对应版本章节（缺失时回退到 `[Unreleased]`）
   \+ 本次推送的提交列表。所以**发版前必须写 CHANGELOG**，否则说明里只有提交列表。
+- **librdkafka 的 `<curl/curl.h>` 坑**：`rdkafka_conf.c` 把该 include 写在
+  `#ifdef WITH_OAUTHBEARER_OIDC` 里，而 cmake 用 `#cmakedefine01` 生成这个宏
+  （即使功能关闭也会被"定义"成 0），于是任何平台编译 `rdkafka-sys` 都要求存在这个头文件，
+  即使一个 curl 符号也不会被引用。CI 里因此先用 `CFLAGS=-I<空占位目录>` 骗过预处理器
+  （见 `release.yml` 的 "Provide a curl header" 步骤）；本地 Linux 直接
+  `sudo apt install libcurl4-openssl-dev` 即可（Ubuntu 把它放到
+  `/usr/include/x86_64-linux-gnu/curl/`，属于 gcc 默认搜索路径）。
+  升级 `rdkafka` 之后记得重新确认这个坑还在不在。
 
 ## 3. 硬性约束
 
