@@ -8,6 +8,10 @@
 
 ## [Unreleased]
 
+_暂无改动。_
+
+## [0.2.0] - 2026-09-16
+
 ### 新增
 
 - **RocketMQ 驱动**：nameserver + broker 集群视图、主题（读写队列，含系统主题标记）、
@@ -44,5 +48,6 @@
   命令层与界面不认识任何具体 broker，新增一种消息队列只需注册一行。
 - 连接配置管理、工作区状态、能力标记与 `just` 开发命令集。
 
-[Unreleased]: https://github.com/freewu/mq-manager/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/freewu/mq-manager/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/freewu/mq-manager/releases/tag/v0.2.0
 [0.1.0]: https://github.com/freewu/mq-manager/releases/tag/v0.1.0

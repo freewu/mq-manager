@@ -1,6 +1,6 @@
 [package]
 name = "mq-manager"
-version = "0.1.0"
+version = "0.2.0"
 description = "Universal message queue management client (Kafka, RocketMQ, RabbitMQ, MQTT, ...)"
 authors = ["mq-manager contributors"]
 edition = "2021"
