@@ -59,16 +59,19 @@ just release 0.2.0              # 或 git add -A && git commit -m "chore(release
 
 - 只有 **`src-tauri/tauri.conf.json` 里的版本号发生变化**才会触发；同一版本号重复推送、
   或者 `v<version>` 标签已存在，都会跳过（`release-plan.mjs` 负责判断）。
-- 需要补发/重跑时用 `workflow_dispatch`；也可以删掉旧 tag 与 Release 后重跑。
+  例外：首次推送（上一个提交里根本没有 `tauri.conf.json`）会被当作「第一次发版」直接放行。
+- 需要补发 / 重跑时用 `workflow_dispatch`（仓库网页 Actions → Release → Run workflow，
+  或已登录的 `gh workflow run release.yml`）；也可以删掉旧 tag 与 Release 后重跑。
+  已经发布过的版本重跑只会因为「tag 已存在」而跳过，不会覆盖已有产物。
 - `uploadPlainBinary: true` 是三平台「可单独运行的可执行文件」的来源，
   不要关掉；`uploadUpdaterJson` 关闭是因为项目没有配置自动更新。
-- 仓库需要 `Settings → Actions → General → Workflow permissions` 允许
-  **Read and write permissions**，否则创建 Release 会 403。
+- 创建 Release 报 **403** 时，去 `Settings → Actions → General → Workflow permissions`
+  把权限改成 **Read and write permissions**（新仓库默认已经够用，本项目第一次发版就是默认设置下跑通的）。
 - Release 说明 = `CHANGELOG.md` 中对应版本章节（缺失时回退到 `[Unreleased]`）
   \+ 本次推送的提交列表。所以**发版前必须写 CHANGELOG**，否则说明里只有提交列表。
 - **librdkafka 的 `<curl/curl.h>` 坑**：`rdkafka_conf.c` 把该 include 写在
   `#ifdef WITH_OAUTHBEARER_OIDC` 里，而 cmake 用 `#cmakedefine01` 生成这个宏
-  （即使功能关闭也会被"定义"成 0），于是任何平台编译 `rdkafka-sys` 都要求存在这个头文件，
+  （即使功能关闭也会被「定义」成 0），于是任何平台编译 `rdkafka-sys` 都要求存在这个头文件，
   即使一个 curl 符号也不会被引用。CI 里因此先用 `CFLAGS=-I<空占位目录>` 骗过预处理器
   （见 `release.yml` 的 "Provide a curl header" 步骤）；本地 Linux 直接
   `sudo apt install libcurl4-openssl-dev` 即可（Ubuntu 把它放到
